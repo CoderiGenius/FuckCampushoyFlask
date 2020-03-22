@@ -1,5 +1,5 @@
 # FuckCampushoyFlask
- 基于Flask的今日校园App自动提交辅导员问卷，支持定位。
+ 基于Flask的今日校园App自动提交辅导员问卷，支持定位，适配青岛科技大学。
 
 设置请看app.py,其中部分内容需要抓包获取
 
