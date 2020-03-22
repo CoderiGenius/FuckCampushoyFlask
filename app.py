@@ -93,7 +93,7 @@ def auto_post(task, fwid, wid):
                 continue
 
             if row['title']== "目前所在地":
-                row['value'] = "山东省威海市环翠区"
+                row['value'] = task['address']
                 continue
             if row['title']== "当前身体情况":
                 row['value'] = "正常"
