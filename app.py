@@ -20,7 +20,7 @@ log_file = './logs.json'
 # 轮询间隔时间
 timers = 5
 # 此处需要抓取问卷submit提交数据，填入request header中的Cpdaily-Extension字段内容
-cpdaily_extension = 'XvWN4SWqyX648L13hW5koOHt5AfBN6jFTi4zR23WludYuPZfzB8fDcBpRB80 G2iWtG0fERtQ4X8zQBbHy/r6uMNNbUtKPUlwMAtbc/z8vAbUjiJTLAFvmdGH SCr5J9+V1o+FQZ/SLAmN2005wY5kyRr8oaSTpHAypclwJjPqKn7xljjjQMfL diDrjl5U3yTja80Vz1J/cvZkxJdzmR0cH75k507uImVL'
+cpdaily_extension = '此处需要抓包获取'
 
 lock = threading.Lock()
 app = Flask(__name__)
