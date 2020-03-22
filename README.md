@@ -8,3 +8,5 @@
 原作者 [mo10/FuckCampushoyFlask](https://github.com/mo10/FuckCampushoyFlask)
 
 仅作交流学习使用，疫情期间请确保如实上报身体情况与位置信息
+
+使用、修改者请遵守开源许可协议
