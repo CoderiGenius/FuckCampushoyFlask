@@ -1,3 +1,5 @@
+#coding:utf-8
+
 import os.path
 import time
 import json
@@ -10,16 +12,15 @@ from urllib.parse import urlparse, parse_qsl
 from flask import Flask, session, request, render_template
 from apscheduler.schedulers.background import BackgroundScheduler
 
-
 # Requests 库SSL校验 用于Debug
 VERIFY = True
 # task与日志保存路径
 tasks_file = './tasks.json'
 log_file = './logs.json'
 # 轮询间隔时间
-timers = 30
+timers = 5
 # 此处需要抓取问卷submit提交数据，填入request header中的Cpdaily-Extension字段内容
-cpdaily_extension = 'To Request Heaedr Cpdaily-Extension Value'
+cpdaily_extension = 'XvWN4SWqyX648L13hW5koOHt5AfBN6jFTi4zR23WludYuPZfzB8fDcBpRB80 G2iWtG0fERtQ4X8zQBbHy/r6uMNNbUtKPUlwMAtbc/z8vAbUjiJTLAFvmdGH SCr5J9+V1o+FQZ/SLAmN2005wY5kyRr8oaSTpHAypclwJjPqKn7xljjjQMfL diDrjl5U3yTja80Vz1J/cvZkxJdzmR0cH75k507uImVL'
 
 lock = threading.Lock()
 app = Flask(__name__)
@@ -70,9 +71,9 @@ def auto_post(task, fwid, wid):
     try:
         # 请求问卷内容
         r = requests.post(
-            'https://ustl.cpdaily.com/wec-counselor-collector-apps/stu/collector/getFormFields',
+            'https://qust.cpdaily.com/wec-counselor-collector-apps/stu/collector/getFormFields',
             json={
-                'pageSize': 10,
+                'pageSize': 100,
                 'pageNumber': 1,
                 'formWid': fwid,
                 'collectorWid': wid
@@ -80,31 +81,57 @@ def auto_post(task, fwid, wid):
                 'Cookie': task['cookie']
             }, timeout=5, verify=VERIFY)
         frj = r.json()
+        print(r.json())
         if frj['code'] != '0':
             loge(task['idx'], '请求问卷失败')
             return
         # 填写
         for row in frj['datas']['rows']:
-            if row['fieldType'] != 1:
-                task['status'] = '存在未知问题格式'
-                task['lastupd'] = time.strftime(time_format)
-                save_tasks()
-                return
-            if row['title'].find('是否') == -1:
-                task['status'] = '模棱两可的问题'
-                task['lastupd'] = time.strftime(time_format)
-                save_tasks()
-                return
+            #print("row:"+row)
+            if row["isRequired"] ==0:
+                row['fieldItems'].clear()
+                continue
+
+            if row['title']== "目前所在地":
+                row['value'] = "山东省威海市环翠区"
+                continue
+            if row['title']== "当前身体情况":
+                row['value'] = "正常"
+                for i in row['fieldItems']:
+                    if i['content'] != "正常":
+
+                        row['fieldItems'].remove(i)
+
+                continue
+            if row['title']== "今日体温":
+                row['value'] = "<37.3℃"
+                k = row['fieldItems'][0]
+                print(k)
+
+                row['fieldItems'].pop()
+                row['fieldItems'].pop()
+                row['fieldItems'].pop()
+                row['fieldItems'].pop()
+                row['fieldItems'].pop()
+                row['fieldItems'].pop()
+
+                continue
+
+            for i in row['fieldItems']:
+                if i['content'] != "否":
+
+                    row['fieldItems'].remove(i)
             row['value'] = "否"
+            print(frj['datas']['rows'])
         # 提交
         r = requests.post(
-            'https://ustl.cpdaily.com/wec-counselor-collector-apps/stu/collector/submitForm',
+            'https://qust.cpdaily.com/wec-counselor-collector-apps/stu/collector/submitForm',
             data=json.dumps({
                 'formWid': fwid,
                 'address': task['address'].strip(),
                 'collectWid': wid,
                 'schoolTaskWid': None,
-                'form': frj['datas']['rows'],
+                'form':frj['datas']['rows'],
             }, ensure_ascii=False).encode('utf-8'),
             headers={
                 'Content-type': 'application/json; charset=utf-8',
@@ -114,6 +141,7 @@ def auto_post(task, fwid, wid):
                 'Cpdaily-Extension': cpdaily_extension
             }, timeout=5, verify=VERIFY)
         rj = r.json()
+        print(rj)
         if rj['code'] != '0':
             loge(task['idx'], '提交问卷失败,%s' % rj['message'])
             task['status'] = '提交问卷失败'
@@ -126,6 +154,7 @@ def auto_post(task, fwid, wid):
     except requests.exceptions.Timeout:
         loge(task['idx'], '问卷请求或提交超时')
     except:
+        traceback.print_exc()
         loge(task['idx'], 'auto_post错误')
 
 
@@ -135,16 +164,19 @@ def auto_poll():
 
     with lock:
         for task in tasks['data']:
+            loge(1,"start")
             try:
                 r = requests.post(
-                    'https://ustl.cpdaily.com/wec-counselor-collector-apps/stu/collector/queryCollectorProcessingList',
+                    'https://qust.cpdaily.com/wec-counselor-collector-apps/stu/collector/queryCollectorProcessingList',
                     json={
-                        'pageSize': 6,
+                        'pageSize': 60,
                         'pageNumber': 1
                     }, headers={
                         'Cookie': task['cookie']
                     }, timeout=5, verify=VERIFY)
                 rj = r.json()
+                #print(rj)
+                #loge(task['cookie'], r.json)
                 task['lastupd'] = time.strftime(time_format)
                 # 请求失败
                 if rj['code'] != '0':
@@ -162,6 +194,7 @@ def auto_poll():
             except requests.exceptions.Timeout:
                 loge(task['idx'], '请求超时')
             except:
+                traceback.print_exc()
                 loge(task['idx'], 'auto_poll错误')
 
 
@@ -188,7 +221,7 @@ def new_task():
 def get_code():
     try:
         # 请求clientId
-        r = requests.get('https://ustl.cpdaily.com/wec-counselor-stu-apps/stu/mobile/index.html#/forAppNotice',
+        r = requests.get('https://qust.cpdaily.com/wec-counselor-stu-apps/stu/mobile/index.html#/forAppNotice',
                          timeout=5, verify=VERIFY)
         session['cookie'] = r.request.headers['Cookie']
         query = dict(parse_qsl(urlparse(r.url).query))
