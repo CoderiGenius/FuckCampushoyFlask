@@ -1,5 +1,5 @@
 #coding:utf-8
-
+import traceback
 import os.path
 import time
 import json
@@ -164,7 +164,7 @@ def auto_poll():
 
     with lock:
         for task in tasks['data']:
-            loge(1,"start")
+            #loge(1,"start")
             try:
                 r = requests.post(
                     'https://qust.cpdaily.com/wec-counselor-collector-apps/stu/collector/queryCollectorProcessingList',
