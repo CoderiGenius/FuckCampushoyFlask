@@ -95,6 +95,9 @@ def auto_post(task, fwid, wid):
             if row['title']== "目前所在地":
                 row['value'] = task['address']
                 continue
+            if row['title']== "当前所在地":
+                row['value'] = task['address']
+                continue
             if row['title']== "当前身体情况":
                 row['value'] = "正常"
                 for i in row['fieldItems']:
