@@ -92,9 +92,9 @@ def auto_post(task, fwid, wid):
                 row['fieldItems'].clear()
                 continue
 
-            if row['title']== "目前所在地":
-                row['value'] = task['address']
-                continue
+#             if row['title']== "目前所在地":
+#                 row['value'] = task['address']
+#                 continue
             if row['title']== "当前所在地":
                 row['value'] = task['address']
                 continue
