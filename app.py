@@ -1,4 +1,4 @@
-#coding:utf-8
+# coding:utf-8
 import traceback
 import os.path
 import time
@@ -19,9 +19,9 @@ tasks_file = './tasks.json'
 log_file = './logs.json'
 # 轮询间隔时间
 timers = 5
+
 # 此处需要抓取问卷submit提交数据，填入request header中的Cpdaily-Extension字段内容
 cpdaily_extension = '此处需要抓包获取'
-
 lock = threading.Lock()
 app = Flask(__name__)
 app.config['SESSION_TYPE'] = 'memcached'
@@ -62,6 +62,15 @@ def save_tasks():
         json.dump(tasks, fd)
 
 
+def filter_by_content(content: str) -> callable:
+    def inner_func(row) -> bool:
+        if row["content"] == content:
+            return True
+        return False
+
+    return inner_func
+
+
 def auto_post(task, fwid, wid):
     # 检查地址
     if len(task['address'].strip()) == 0:
@@ -87,43 +96,39 @@ def auto_post(task, fwid, wid):
             return
         # 填写
         for row in frj['datas']['rows']:
-            #print("row:"+row)
-            if row["isRequired"] ==0:
+            if row["isRequired"] == 0:
                 row['fieldItems'].clear()
                 continue
 
-#             if row['title']== "目前所在地":
-#                 row['value'] = task['address']
-#                 continue
-            if row['title']== "当前所在地":
+            title = row['title']
+            if row['title'] == "当前所在地":
                 row['value'] = task['address']
                 continue
-            if row['title']== "当前身体情况":
+            if row['title'] == "当前身体情况":
                 row['value'] = "正常"
                 for i in row['fieldItems']:
                     if i['content'] != "正常":
-
                         row['fieldItems'].remove(i)
-
                 continue
-            if row['title']== "今日体温":
-                row['value'] = "<37.3℃"
+            if row['title'] == "今日体温":
+                row['value'] = "36.1℃~37.3℃"
                 k = row['fieldItems'][0]
                 print(k)
-
-                row['fieldItems'].pop()
-                row['fieldItems'].pop()
-                row['fieldItems'].pop()
-                row['fieldItems'].pop()
-                row['fieldItems'].pop()
-                row['fieldItems'].pop()
-
+                del row['fieldItems'][1:]
                 continue
+            if title == "是否已申请健康码？":
+                row["value"] = "是"
+                row["fieldItems"] = list(filter(filter_by_content("是"), row["fieldItems"]))
+                continue
+            if title == "健康码颜色为":
+                row["value"] = "绿色"
+                row["fieldItems"] = list(filter(filter_by_content("绿色"), row["fieldItems"]))
+                continue
+            if title == "是否已到居住地医疗或疾控机构进行核酸和血清抗体检测？":
+                row["value"] = "否"
+                row["fieldItems"] = list(filter(filter_by_content("否"), row["fieldItems"]))
 
-            for i in row['fieldItems']:
-                if i['content'] != "否":
-
-                    row['fieldItems'].remove(i)
+            row["fieldItems"] = list(filter(filter_by_content("否"), row["fieldItems"]))
             row['value'] = "否"
             print(frj['datas']['rows'])
         # 提交
@@ -134,7 +139,7 @@ def auto_post(task, fwid, wid):
                 'address': task['address'].strip(),
                 'collectWid': wid,
                 'schoolTaskWid': None,
-                'form':frj['datas']['rows'],
+                'form': frj['datas']['rows'],
             }, ensure_ascii=False).encode('utf-8'),
             headers={
                 'Content-type': 'application/json; charset=utf-8',
@@ -167,7 +172,7 @@ def auto_poll():
 
     with lock:
         for task in tasks['data']:
-            #loge(1,"start")
+            # loge(1,"start")
             try:
                 r = requests.post(
                     'https://qust.cpdaily.com/wec-counselor-collector-apps/stu/collector/queryCollectorProcessingList',
@@ -178,8 +183,8 @@ def auto_poll():
                         'Cookie': task['cookie']
                     }, timeout=5, verify=VERIFY)
                 rj = r.json()
-                #print(rj)
-                #loge(task['cookie'], r.json)
+                # print(rj)
+                # loge(task['cookie'], r.json)
                 task['lastupd'] = time.strftime(time_format)
                 # 请求失败
                 if rj['code'] != '0':
@@ -316,7 +321,7 @@ def del_task():
     with lock:
         for idx in range(len(tasks['data'])):
             if tasks['data'][idx]['idx'] == int(task_idx):
-                del(tasks['data'][idx])
+                del (tasks['data'][idx])
                 save_tasks()
     return {
         'status': 0
